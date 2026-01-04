@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "exportedAt": "2025-11-27T03:34:47.532Z",
+  "data": {
+    "contract": {
+      "annualGoal": 360000,
+      "mentalPayRate": 100,
+      "startDate": "2025-11-26"
+    },
+    "valueEvents": [
+      {
+        "id": "1764206379363",
+        "date": "2025-11-27",
+        "description": "Replit dev for mental bank",
+        "units": 3,
+        "unitType": "hours",
+        "payRate": 100,
+        "amount": 300
+      }
+    ],
+    "happenings": [
+      {
+        "date": "2025-11-27",
+        "notes": "I am grateful for this day where I walked a good amount. Consumed enough to put on weight. I am grateful for Sabrina. For being able to speak to both of my children. I am grateful for the energy to clean up the toys and unload the dishwasher. \n\nI am also grateful for both walking and tea reducing my blood pressure. ",
+        "drawingPaths": []
+      }
+    ],
+    "profile": {
+      "displayName": "Christian"
+    },
+    "settings": {
+      "defaultPayRate": 100,
+      "applePencilPressure": 0.8,
+      "exportFormat": "pdf"
+    },
+    "affirmations": [
+      {
+        "id": "1764189063384",
+        "text": "My efforts lead me toward greater success each day",
+        "category": "success",
+        "createdAt": "2025-11-26T20:31:03.384Z",
+        "usageCount": 1
+      },
+      {
+        "id": "1764189147004",
+        "text": "Every day My body continues to heal",
+        "category": "general",
+        "createdAt": "2025-11-26T20:32:27.004Z",
+        "usageCount": 1
+      },
+      {
+        "id": "1764213451175",
+        "text": "I do the tasks that don’t produce immediate success in my mind because doing them repeatedly overtime will bring success.",
+        "category": "success",
+        "createdAt": "2025-11-27T03:17:31.175Z",
+        "usageCount": 1
+      }
+    ],
+    "dailyAffirmations": [
+      {
+        "date": "2025-11-27",
+        "affirmationIds": [
+          "1764213451175",
+          "1764189147004",
+          "1764189063384"
+        ]
+      }
+    ],
+    "realityIncomes": []
+  }
+}
