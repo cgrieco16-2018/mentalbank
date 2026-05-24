@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, Component, ReactNode } from "react";
+import React, { useState, useEffect, useRef, Component, ReactNode, useMemo } from "react";
 import { View, StyleSheet, Pressable, Platform } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "./ThemedText";
@@ -82,11 +82,25 @@ export function DrawingCanvas({
   const [hasError, setHasError] = useState(false);
   const currentPathRef = useRef<any>(null);
   const pathsRef = useRef<DrawingPath[]>(paths);
+  const updateThrottleRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingSaveRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setPaths(initialPaths);
     pathsRef.current = initialPaths;
   }, [initialPaths]);
+
+  useEffect(() => {
+    // Cleanup timers on unmount
+    return () => {
+      if (updateThrottleRef.current) {
+        clearTimeout(updateThrottleRef.current);
+      }
+      if (pendingSaveRef.current) {
+        clearTimeout(pendingSaveRef.current);
+      }
+    };
+  }, []);
 
   const getActiveColor = () => isEraser ? ERASER_COLOR : selectedColor;
   const getActiveWidth = () => isEraser ? ERASER_WIDTH : 3;
@@ -109,7 +123,15 @@ export function DrawingCanvas({
     if (skiaAvailable && Skia && currentPathRef.current && !hasError) {
       try {
         currentPathRef.current.lineTo(x, y);
-        setCurrentPathSvg(currentPathRef.current.toSVGString());
+
+        // Throttle UI updates to reduce re-renders (update every 16ms = ~60fps max)
+        if (updateThrottleRef.current) {
+          clearTimeout(updateThrottleRef.current);
+        }
+        updateThrottleRef.current = setTimeout(() => {
+          setCurrentPathSvg(currentPathRef.current?.toSVGString() || null);
+          updateThrottleRef.current = null;
+        }, 16);
       } catch (e) {
         console.error("Drawing error:", e);
         setHasError(true);
@@ -117,8 +139,24 @@ export function DrawingCanvas({
     }
   };
 
+  const debouncedSave = (newPaths: DrawingPath[]) => {
+    if (pendingSaveRef.current) {
+      clearTimeout(pendingSaveRef.current);
+    }
+    pendingSaveRef.current = setTimeout(() => {
+      onSave(newPaths);
+      pendingSaveRef.current = null;
+    }, 500);
+  };
+
   const endPath = () => {
     if (currentPathRef.current) {
+      // Clear any pending throttle timer
+      if (updateThrottleRef.current) {
+        clearTimeout(updateThrottleRef.current);
+        updateThrottleRef.current = null;
+      }
+
       const newPath: DrawingPath = {
         path: currentPathRef.current.toSVGString(),
         color: getActiveColor(),
@@ -129,7 +167,9 @@ export function DrawingCanvas({
       setPaths(newPaths);
       setCurrentPathSvg(null);
       currentPathRef.current = null;
-      onSave(newPaths);
+
+      // Debounce save to reduce AsyncStorage writes
+      debouncedSave(newPaths);
     }
   };
 
@@ -138,7 +178,7 @@ export function DrawingCanvas({
     pathsRef.current = [];
     setCurrentPathSvg(null);
     currentPathRef.current = null;
-    onSave([]);
+    debouncedSave([]);
   };
 
   const handleUndo = () => {
@@ -146,7 +186,7 @@ export function DrawingCanvas({
       const newPaths = paths.slice(0, -1);
       setPaths(newPaths);
       pathsRef.current = newPaths;
-      onSave(newPaths);
+      debouncedSave(newPaths);
     }
   };
 
@@ -160,8 +200,8 @@ export function DrawingCanvas({
   };
 
   const panGesture = Gesture.Pan()
-    .runOnJS(true)
-    .minDistance(1)
+    .minDistance(0)
+    .maxPointers(1)
     .onStart((event) => {
       startPath(event.x, event.y);
     })
@@ -171,6 +211,24 @@ export function DrawingCanvas({
     .onEnd(() => {
       endPath();
     });
+
+  // Memoize rendered paths to avoid recreating them on every render
+  const renderedPaths = useMemo(() => {
+    return paths.map((pathData, index) => {
+      const skiaPath = Skia?.Path?.MakeFromSVGString?.(pathData.path);
+      return skiaPath ? (
+        <Path
+          key={`path-${index}`}
+          path={skiaPath}
+          color={pathData.color}
+          style="stroke"
+          strokeWidth={pathData.width}
+          strokeCap="round"
+          strokeJoin="round"
+        />
+      ) : null;
+    });
+  }, [paths]);
 
   const renderCanvas = () => {
     if (!skiaAvailable || hasError || Platform.OS === "web") {
@@ -193,37 +251,23 @@ export function DrawingCanvas({
       );
     }
 
+    const skiaCurrentPath = currentPathSvg ? Skia?.Path?.MakeFromSVGString?.(currentPathSvg) : null;
+
     return (
       <SkiaErrorBoundary onError={() => setHasError(true)}>
         <GestureDetector gesture={panGesture}>
           <Canvas style={{ flex: 1, backgroundColor: CANVAS_BACKGROUND }}>
-            {paths.map((pathData, index) => {
-              const skiaPath = Skia?.Path?.MakeFromSVGString?.(pathData.path);
-              return skiaPath ? (
-                <Path
-                  key={index}
-                  path={skiaPath}
-                  color={pathData.color}
-                  style="stroke"
-                  strokeWidth={pathData.width}
-                  strokeCap="round"
-                  strokeJoin="round"
-                />
-              ) : null;
-            })}
-            {currentPathSvg ? (() => {
-              const skiaCurrentPath = Skia?.Path?.MakeFromSVGString?.(currentPathSvg);
-              return skiaCurrentPath ? (
-                <Path
-                  path={skiaCurrentPath}
-                  color={getActiveColor()}
-                  style="stroke"
-                  strokeWidth={getActiveWidth()}
-                  strokeCap="round"
-                  strokeJoin="round"
-                />
-              ) : null;
-            })() : null}
+            {renderedPaths}
+            {skiaCurrentPath ? (
+              <Path
+                path={skiaCurrentPath}
+                color={getActiveColor()}
+                style="stroke"
+                strokeWidth={getActiveWidth()}
+                strokeCap="round"
+                strokeJoin="round"
+              />
+            ) : null}
           </Canvas>
         </GestureDetector>
       </SkiaErrorBoundary>
