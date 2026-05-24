@@ -1080,6 +1080,15 @@ export default function LedgerScreen({ navigation, route }: LedgerScreenProps) {
             <View style={{ width: 24 }} />
           </View>
 
+          {/* Running Balance Line */}
+          <View style={[styles.balanceLineContainer, { backgroundColor: colors.backgroundSecondary }]}>
+            <ThemedText style={[styles.balanceLineText, { color: colors.textSecondary }]}>
+              Running Balance: <ThemedText style={[styles.balanceLineAmount, { color: colors.text }]}>
+                {formatCurrency(netRunningBalance)}
+              </ThemedText>
+            </ThemedText>
+          </View>
+
           <View style={styles.tabContainer}>
             <Pressable
               style={[
@@ -1968,5 +1977,16 @@ const styles = StyleSheet.create({
   },
   legendText: {
     ...Typography.caption,
+  },
+  balanceLineContainer: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+  },
+  balanceLineText: {
+    ...Typography.body,
+    textAlign: 'center',
+  },
+  balanceLineAmount: {
+    fontWeight: '600',
   },
 });

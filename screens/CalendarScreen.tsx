@@ -17,6 +17,7 @@ import {
   formatCurrency,
   calculateDailyTotal,
   calculateNetDailyTotal,
+  calculateNetRunningBalance,
   formatDate,
   parseDateString,
   getDaysInMonth,
@@ -26,6 +27,7 @@ interface DayData {
   date: string;
   total: number;
   eventCount: number;
+  runningBalance: number;
 }
 
 interface CalendarScreenProps {
@@ -72,11 +74,13 @@ export default function CalendarScreen({ navigation }: CalendarScreenProps) {
       const dayIncomes = incomes.filter((inc) => inc.date === dateStr);
       const netTotal = calculateNetDailyTotal(dayEvents, dayIncomes);
       const entryCount = dayEvents.length + dayIncomes.length;
+      const runningBalance = calculateNetRunningBalance(events, incomes, dateStr);
 
       days.push({
         date: dateStr,
         total: netTotal,
         eventCount: entryCount,
+        runningBalance,
       });
     }
 
@@ -131,21 +135,29 @@ export default function CalendarScreen({ navigation }: CalendarScreenProps) {
             {item.eventCount === 1 ? "entry" : "entries"}
           </ThemedText>
         </View>
-        <ThemedText
-          style={[
-            styles.dayTotal,
-            {
-              color:
-                item.total > 0 
-                  ? colors.positive 
-                  : item.total < 0 
-                    ? colors.danger 
-                    : colors.textSecondary,
-            },
-          ]}
-        >
-          {item.total < 0 ? "-" : ""}{formatCurrency(Math.abs(item.total))}
-        </ThemedText>
+        <View style={styles.balanceContainer}>
+          <ThemedText
+            style={[
+              styles.dayTotal,
+              {
+                color:
+                  item.total > 0
+                    ? colors.positive
+                    : item.total < 0
+                      ? colors.danger
+                      : colors.textSecondary,
+              },
+            ]}
+          >
+            {item.total < 0 ? "-" : ""}{formatCurrency(Math.abs(item.total))}
+          </ThemedText>
+          <ThemedText
+            style={[styles.runningBalance, { color: colors.textSecondary }]}
+          >
+            Balance: {item.runningBalance < 0 ? "-" : ""}
+            {formatCurrency(Math.abs(item.runningBalance))}
+          </ThemedText>
+        </View>
       </Pressable>
     );
   };
@@ -234,9 +246,16 @@ const styles = StyleSheet.create({
   eventCount: {
     ...Typography.small,
   },
+  balanceContainer: {
+    alignItems: "flex-end",
+  },
   dayTotal: {
     ...Typography.h4,
     fontWeight: "600",
+  },
+  runningBalance: {
+    ...Typography.small,
+    marginTop: Spacing.xs,
   },
   emptyContainer: {
     alignItems: "center",
